@@ -1,10 +1,9 @@
 import time
-import matplotlib.pyplot
 import numpy as np
 
 
 class DNN:
-    def __init(self, sizes, epochs, lr):
+    def __init__(self, sizes=[784, 128, 64, 10], epochs=10, lr=0.001):
         self.sizes = sizes
         self.epochs = epochs
         self.lr = lr
@@ -55,12 +54,51 @@ class DNN:
 
         return params['Z3']
 
-    def backward_pass(self):
-        pass
+    def backward_pass(self, y_train, output):
+        params = self.params
 
-    def compute_accuracy(self):
-        pass
+        change_w = {}
 
+        # calculate W3 update
+        error = 2 * (output - y_train) / output.shape[0] * self.softmax(params['Z3'], derivative=True)
+        change_w['W3'] = np.outer(error, params['A2'])
+
+        # calculate W2 update
+        error = np.dot(params['W3'].T, error) * self.sigmoid(params['Z2'], derivative=True)
+        change_w['W2'] = np.outer(error, params['A1'])
+
+        # calculate W2 update
+        error = np.dot(params['W2'].T, error) * self.sigmoid(params['Z1'], derivative=True)
+        change_w['W1'] = np.outer(error, params['A0'])
+
+    def update_weights(self, change_w):
+        for key, val in change_w.items():
+            self.params[key] -= self.lr * val #W_t+1 = W_t - lr*Delta_W_t
+
+    def compute_accuracy(self, test_data):
+        predictions = []
+        for x in test_data:
+            values = x.split(",")
+            inputs = (np.asarray(values[1:]) / 255.0 * 0.99) + 0.01
+            targets = np.zeros(10) + 0.01
+            output = self.forward_pass(inputs)
+            pred = np.argmax(output)
+            predictions.append(pred==np.argmax(targets))
+
+        return np.mean(predictions)
+
+    def train(self, train_list, test_list):
+        start_time = time.time()
+        for i in range(self.epochs):
+            for x in train_list:
+                values = x.plsit(",")
+                inputs = (np.asarray(values[1:]) /255.0 * 0.99) + 0.01
+                targets = np.zeros(10) + 0.01
+                targets[int(values[0])] = 0.99
+                output = self.forward_pass(inputs)
+                change_w = self.backward_pass(targets, output)
+                self.update_weights(change_w)
+            accuracy = self.compute_accuracy(test_list)
 
 train_file = open("/home/suito/Documents/Projet/CNN_MNIST/train.csv")
 train_list = train_file.readlines()
@@ -71,3 +109,4 @@ test_list = test_file.readlines()
 test_file.close
 
 dnn = DNN(sizes=[784, 128, 64, 10], epochs=10, lr=0.001)
+dnn.train(train_list, test_list)
